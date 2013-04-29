@@ -1,6 +1,6 @@
 session.pkl
 
-*.py[cod~]
+*.py[cod]
 
 # C extensions
 *.so
