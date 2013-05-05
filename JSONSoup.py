@@ -8,7 +8,7 @@ class JSONSoup:
     self.children = []
 
   def findAll(self, attrs):
-    first_key_matches = self.matchKey(attrs.keys()[0])
+    first_key_matches = self.matchAllKey(attrs.keys()[0])
     parents_of_first_key_matches = [m.parent for m in first_key_matches]
     
     matches = []
@@ -29,14 +29,16 @@ class JSONSoup:
       return JSONSoup() # An empty soup
     else:
       results = JSONSoup()
-      results.load_obj(matches)
+      results.children = matches
       return results
       
   def matchKey(self, key):
     def dig(obj):
       if isinstance(obj, JSONSoup):
         obj = obj.children
-      if isinstance(obj, dict):
+        for _v in dig(obj):
+          yield _v
+      elif isinstance(obj, dict):
         if key in obj.keys():
           yield obj[key]
         else:
@@ -49,6 +51,56 @@ class JSONSoup:
             yield _v
       else:
         return # Something like a string or an int
+      
+    new_soup = JSONSoup()
+    new_soup.children = [o for o in dig(self.children)]
+        
+    return new_soup
+
+  def matchAllKey(self, key):
+    def dig(obj):
+      if isinstance(obj, JSONSoup):
+        obj = obj.children
+        for _v in dig(obj):
+          yield _v
+      elif isinstance(obj, dict):
+        if key in obj.keys():
+          yield obj[key]
+        for v in obj.values():
+          for _v in dig(v):
+            yield _v
+      elif isinstance(obj, list):
+        for v in obj:
+          for _v in dig(v):
+            yield _v
+      else:
+        return # Something like a string or an int
+      
+    new_soup = JSONSoup()
+    new_soup.children = [o for o in dig(self.children)]
+        
+    return new_soup
+
+  def matchValue(self, value):
+    def dig(obj):
+      if isinstance(obj, JSONSoup):
+        obj = obj.children
+      if isinstance(obj, dict):
+        for v in obj.values():
+          if value in dig(v):
+            yield obj
+          else:
+            for _v in dig(v):
+              yield _v
+      elif isinstance(obj, list):
+        for v in obj:
+          if value in dig(v):
+            yield obj
+          else:
+            for _v in dig(v):
+              yield _v
+      elif obj == value:
+        yield obj 
       
     new_soup = JSONSoup()
     new_soup.children = [o for o in dig(self.children)]
