@@ -111,7 +111,6 @@ class Story:
       "owned_by": owned_by,
       "labels": labels,
       "requester": requester}
-       
       
   def setIteration(self, iteration):
     self.details.update({"iteration": iteration})

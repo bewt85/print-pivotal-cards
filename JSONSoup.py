@@ -13,7 +13,7 @@ class JSONSoup:
     
     matches = []
     for potential_match in parents_of_first_key_matches:
-      raw_potential_match = potential_match.get_raw()
+    f  raw_potential_match = potential_match.get_raw()
       ismatch = True
       if not set(attrs.keys()).issubset(raw_potential_match.keys()):
         ismatch = False
@@ -101,12 +101,18 @@ class JSONSoup:
               yield _v
       elif obj == value:
         yield obj 
+    
+    def makeSoup(obj):
+      if not isinstance(obj, JSONSoup):
+        new_soup = JSONSoup()
+        new_soup.children = obj
+        return new_soup
+      else:
+        return obj
       
     new_soup = JSONSoup()
-    new_soup.children = [o for o in dig(self.children)]
+    new_soup.children = map(makeSoup, [o for o in dig(self.children)])
         
-    return new_soup
-  
   def load(self, stuff):
     if isinstance(stuff, JSONSoup):
       self.__dict__ = stuff.__dict__.copy()
@@ -163,7 +169,7 @@ class JSONSoup:
   def __setitem__(self, k, v):
     self.children[k] = v
   
-  def pretty(self):
+  def prettify(self):
     return simplejson.dumps(self.get_raw(), indent=2)
   
   def __getitem__(self, k):

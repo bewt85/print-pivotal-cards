@@ -97,6 +97,11 @@ class JSONSoupTest(unittest.TestCase):
     expected_results.load_obj(_expected_results)
     self.assertEqual(alt_soup.matchKey('x'), expected_results)
     
+  def test_matchValue_returns_soup(self):
+    results = self.soup.matchValue(4)
+    for soup in results:
+      self.assertEqual(isinstance(soup, JSONSoup), True)
+  
   def test_matchValue_1(self):
     _expected_results = [{'e': 4, 'g': 5}, {'e': 4, 'd': 5}]
     _expected_results.sort()
@@ -105,6 +110,13 @@ class JSONSoupTest(unittest.TestCase):
     results = self.soup.matchValue(4)
     self.assertEqual(isinstance(results.children, list), True)
     results.children.sort()
+    self.assertEqual(results, expected_results)
+  
+  def test_matchValue_2(self):
+    _expected_results = [{'x': 3, 'y': [5, 6], 'z': 7}]
+    expected_results = JSONSoup()
+    expected_results.load_obj(_expected_results)
+    results = self.soup.matchValue(7)
     self.assertEqual(results, expected_results)
     
   def test_findAll_matchValue_1(self):
