@@ -5,6 +5,8 @@ import simplejson
 import pdb
 
 from JSONSoup import JSONSoup
+from PivotalCardPrinter import Story
+from StoryRenderer import StoryRenderer
 
 TIME_ZONE_OFFSET = 1
 
@@ -12,16 +14,46 @@ class PivotalScraper():
   def __init__(self):
     self.session = None
   
-  def getStoryDetails(self):
-    stories = self.project_soup.matchKey('project').matchKey('stories')[0].get_raw()
-    self.loadAllEpics()
-    self.loadAllLabels()  
-    self.loadAllMembers()
-    stories = map(self.epicsAndLabels_ID2String, stories)
-    stories = map(self.requestedBy_ID2String, stories)
-    stories = map(self.ownedBy_ID2String, stories)
-    stories = map(self.tasks_ID2String, stories)
-    return stories          
+  def reloadStories(self):
+    self.stories = None
+    self.loadStories()
+  
+  def loadStories(self):
+    if not hasattr(self, 'stories') or self.stories == None:
+      self.loadProjectSoup()
+      stories = self.project_soup.matchKey('project').matchKey('stories')[0].get_raw()
+      self.loadAllEpics()
+      self.loadAllLabels()  
+      self.loadAllMembers()
+      stories = map(self.epicsAndLabels_ID2String, stories)
+      stories = map(self.requestedBy_ID2String, stories)
+      stories = map(self.ownedBy_ID2String, stories)
+      stories = map(self.tasks_ID2String, stories)
+      self.stories = stories          
+  
+  def mapStoryForRender(self, story):
+    simple_mapping = {
+      'id': 'id',
+      'name': 'name',
+      'decription': 'description',
+      'owned_by': 'owned_by',
+      'requester': 'requested_by'
+    }
+    details = {}
+    for k,v in simple_mapping.iteritems():
+      details[k] = story[v]
+    
+    details['labels'] = ", ".join(story['labels'])
+    details['tasks'] = "<br>".join(story['tasks_str'])
+    details['epic_name'] = ", ".join(story['epics'])
+
+    # Hack to reuse StoryRenderer.  Could do with a refactor 
+    class FakeStory():
+      def __init__(self, details):
+        self.details = details
+    
+    _story = FakeStory(details)
+    return _story
     
   def login(self, username, password):
     authenticity_token = self.getAuthenticityToken()
@@ -133,10 +165,18 @@ if __name__ == '__main__':
   parser = argparse.ArgumentParser()
   parser.add_argument('username', help="Your Pivotal Tracker username")
   parser.add_argument('password', help="Your Pivotal Tracker password")
+  parser.add_argument(
+    "-o", "--output", 
+    help="The HTML file you want to output to", 
+    default=None
+  )
   
   args = parser.parse_args()
   scraper = PivotalScraper()
   scraper.login(args.username, args.password)
-  scraper.reloadProjectSoup()
+  scraper.reloadStories()
   
-  print scraper.project_soup.prettify()
+  stories = map(scraper.mapStoryForRender, scraper.stories)
+  
+  story_renderer = StoryRenderer()
+  story_renderer.render(stories, args.output)

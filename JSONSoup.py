@@ -13,7 +13,7 @@ class JSONSoup:
     
     matches = []
     for potential_match in parents_of_first_key_matches:
-    f  raw_potential_match = potential_match.get_raw()
+      raw_potential_match = potential_match.get_raw()
       ismatch = True
       if not set(attrs.keys()).issubset(raw_potential_match.keys()):
         ismatch = False
@@ -111,7 +111,12 @@ class JSONSoup:
         return obj
       
     new_soup = JSONSoup()
-    new_soup.children = map(makeSoup, [o for o in dig(self.children)])
+    objs = [o for o in dig(self.children)]
+    if objs == None:
+      objs = []
+    new_soup.children = map(makeSoup, objs)
+    
+    return new_soup
         
   def load(self, stuff):
     if isinstance(stuff, JSONSoup):

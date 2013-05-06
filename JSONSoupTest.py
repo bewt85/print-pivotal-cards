@@ -97,6 +97,12 @@ class JSONSoupTest(unittest.TestCase):
     expected_results.load_obj(_expected_results)
     self.assertEqual(alt_soup.matchKey('x'), expected_results)
     
+  def test_marchKey_noMatch(self):
+    self.assertEqual(isinstance(self.soup.matchKey('Not present'), JSONSoup), True)
+    self.assertEqual(isinstance(self.soup.matchKey('Not present').children, list), True)
+    self.assertEqual(isinstance(self.soup.matchKey('t').matchKey('Not present'), JSONSoup), True)
+    self.assertEqual(isinstance(self.soup.matchKey('t').matchKey('Not present').children, list), True)
+  
   def test_matchValue_returns_soup(self):
     results = self.soup.matchValue(4)
     for soup in results:
@@ -118,6 +124,8 @@ class JSONSoupTest(unittest.TestCase):
     expected_results.load_obj(_expected_results)
     results = self.soup.matchValue(7)
     self.assertEqual(results, expected_results)
+  
+  #TODO add test where matchValue returns no results
     
   def test_findAll_matchValue_1(self):
     _expected_results = [3]
