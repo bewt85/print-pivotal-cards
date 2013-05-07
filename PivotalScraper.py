@@ -6,7 +6,7 @@ import pdb
 
 from JSONSoup import JSONSoup
 from PivotalCardPrinter import Story
-from StoryRenderer import StoryRenderer
+from ScrapedStoryRenderer import ScrapedStoryRenderer
 
 TIME_ZONE_OFFSET = 1
 
@@ -22,39 +22,18 @@ class PivotalScraper():
     if not hasattr(self, 'stories') or self.stories == None:
       self.loadProjectSoup()
       stories = self.project_soup.matchKey('project').matchKey('stories')[0].get_raw()
+      project_name = self.project_soup.matchKey('project').matchKey('name').get_raw()[0]
       self.loadAllEpics()
       self.loadAllLabels()  
       self.loadAllMembers()
+      addProject = lambda x: self.addStatic('project_name', project_name, x)
+      stories = map(addProject, stories)
       stories = map(self.epicsAndLabels_ID2String, stories)
       stories = map(self.requestedBy_ID2String, stories)
       stories = map(self.ownedBy_ID2String, stories)
-      stories = map(self.tasks_ID2String, stories)
+      stories = map(self.tasks_format, stories)
       self.stories = stories          
   
-  def mapStoryForRender(self, story):
-    simple_mapping = {
-      'id': 'id',
-      'name': 'name',
-      'decription': 'description',
-      'owned_by': 'owned_by',
-      'requester': 'requested_by'
-    }
-    details = {}
-    for k,v in simple_mapping.iteritems():
-      details[k] = story[v]
-    
-    details['labels'] = ", ".join(story['labels'])
-    details['tasks'] = "<br>".join(story['tasks_str'])
-    details['epic_name'] = ", ".join(story['epics'])
-
-    # Hack to reuse StoryRenderer.  Could do with a refactor 
-    class FakeStory():
-      def __init__(self, details):
-        self.details = details
-    
-    _story = FakeStory(details)
-    return _story
-    
   def login(self, username, password):
     authenticity_token = self.getAuthenticityToken()
     payload = {
@@ -124,6 +103,10 @@ class PivotalScraper():
       self.all_members = {}
       for member in _members:
         self.all_members.update({member['id']: member})
+  
+  def addStatic(self, key, value, story):
+    story[key] = value
+    return story
       
   def epicsAndLabels_ID2String(self, story):
     story_labels = []
@@ -153,11 +136,19 @@ class PivotalScraper():
       story['owned_by'] = "<Unknown: %s>" % story['owned_by_id']
     return story
     
-  def tasks_ID2String(self, story):
+  def tasks_format(self, story):
+    class Task:
+      def __init__(self):
+        self.complete = False
+        self.description = ""
+    
     story_tasks = []
-    for task in story['tasks']:
-      story_tasks.append(task['description'])
-    story['tasks_str'] = story_tasks
+    for _task in story['tasks']:
+      task = Task()
+      task.description = _task['description']
+      task.complete = _task['complete']
+      story_tasks.append(task)
+    story['tasks_list'] = story_tasks
     return story
     
     
@@ -176,7 +167,5 @@ if __name__ == '__main__':
   scraper.login(args.username, args.password)
   scraper.reloadStories()
   
-  stories = map(scraper.mapStoryForRender, scraper.stories)
-  
-  story_renderer = StoryRenderer()
-  story_renderer.render(stories, args.output)
+  story_renderer = ScrapedStoryRenderer()
+  story_renderer.render(scraper.stories, args.output)

@@ -1,0 +1,70 @@
+<html>
+  <head>
+    <title>Pivotal Tracker Printable Cards</title>
+    <link rel="stylesheet" href='pivotal-cards.css' type="text/css" />
+  </head>
+  <body>
+    <div id="pivotal-cards-pages" class="{{ options_classes }}">
+    {% set cardno = 0 %}
+    {% for page in pages %}
+      <div class="page fronts">
+      {% for story in page %}
+        <div class="{{ story.type }} card" id="front-{{ cardno }}">
+	        <div class="front side">
+		        <div class="header">
+			        <span class="labels">
+			          {% for label in story.labels %}
+                <span class="label">{{ label }}</span>
+                {% endfor %}
+			        <span>
+		        </div>
+		        <div class="middle">
+			        <div class="story-title">{{ story.name }}</div>
+			        <div class="story-type">{{ story.type }}</div>
+		        </div>
+		        <div class="footer">
+			        <span class="epic_name">{{ story.epic_name }}</span>
+			        {# Don't have access to points
+			        <span class="points points{{ story.points }}"><span>{{ story.points }}</span></span> 
+			        #}
+		        </div>
+	        </div>
+        </div>
+      {% endfor %}
+      </div>
+      <div class="page backs">
+      {% for story in page %}
+        <div class="{{ story.type }} card" id="back-{{ cardno }}">
+	        <div class="back side">
+		        <div class="header">
+			        <span class="project">{{ story.project_name }}</span>
+			        <span class="id">{{ story.id }}</span>
+		        </div>
+		        <div class="middle">
+			        <div class="story-title">{{ story.name }}</div>
+			        <div class="description">{{ story.description }}</div>
+			        <table class="tasks">
+              {% for task in story.tasks %}
+                <tr>
+                  {% if task.complete %}
+			            <td class="check complete">☑</td>
+			            {% else %}
+			            <td class="check incomplete">☐</td>
+			            {% endif %}
+			            <td class="task">{{ task.description }}</td>
+                </tr>
+              {% endfor %}
+			        </table>
+		        </div>
+		        <div class="footer">
+			        {% if story.requester %}<span class="requester">{{ story.requester }}</span>{% endif %}
+			        {% if story.owner %}<span class="owner">{{ story.owner }}</span>{% endif %}
+		        </div>
+	        </div>
+        </div>
+      {% endfor %}
+      </div>
+    {% endfor %}
+    </div>
+  </body>
+</html>

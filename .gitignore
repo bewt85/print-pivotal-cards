@@ -1,5 +1,6 @@
 session.pkl
 soup.pkl
+*.html~
 
 *.py[cod~]
 
