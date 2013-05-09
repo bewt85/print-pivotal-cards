@@ -5,7 +5,6 @@ import simplejson
 import pdb
 
 from JSONSoup import JSONSoup
-from PivotalCardPrinter import Story
 from StoryRenderer import StoryRenderer
 
 TIME_ZONE_OFFSET = 1
@@ -33,7 +32,8 @@ class PivotalScraper():
       stories = map(self.requestedBy_ID2String, stories)
       stories = map(self.ownedBy_ID2String, stories)
       stories = map(self.tasks_format, stories)
-      self.stories = stories          
+      self.stories = {}
+      self.stories.update([(story['id'], story) for story in stories])
   
   def login(self, username, password):
     authenticity_token = self.getAuthenticityToken()
@@ -174,5 +174,7 @@ if __name__ == '__main__':
   scraper.login(args.username, args.password)
   scraper.reloadStories(project_id=args.pid)
   
+  stories = scraper.stories.values()
+  
   story_renderer = StoryRenderer()
-  story_renderer.render(scraper.stories, args.output)
+  story_renderer.render(stories, args.output)

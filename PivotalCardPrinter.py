@@ -6,127 +6,76 @@ from xml.dom import minidom
 
 from StoryRenderer import StoryRenderer
 
-class Tracker:
-  def __init__(self, helper):
-    self.helper = helper
-    
-  def reloadDetailsOfProjects(self):
-    self.project_details = {}
-    r = self.helper.get("projects")
-    r_xml = minidom.parseString(r.text)
-    projects_xml = r_xml.getElementsByTagName("project")
-    for p in projects_xml:
-      name = self.helper.getXMLElementData(p,"name")
-      pid = int(self.helper.getXMLElementData(p,"id"))
-      last_update = self.helper.getXMLElementData(p,"last_activity_at")
-      self.project_details.update({name: {"name": name, 
-        "id": pid, 
-        "last_activity_at": last_update}})
 
-  def getProjectIDByName(self, project_name):
-    return self.project_details[project_name]["id"] 
-
-class Project:
-  def __init__(self, helper, pid):
-    self.helper = helper
-    self.pid = pid
+class PivotalAPIParser:
+  def __init__(self):
+    self.api_credential = None
+    self.headers = None
     self.stories = {}
+    
+  def login(self, api_credential):
+    self.api_credential = api_credential
+    self.headers={'X-TrackerToken' : self.api_credential}
 
-  def reinitialiseAllStories(self, modified_since=None, other_params={}):
-    self.stories = {}
-    params_dict = other_params
-    
-    if modified_since<>None:
-      params_dict.update({'filter': "modified_since:%s includedone:true" % modified_since})
-      
-    params_url = urllib.urlencode(params_dict)
-    
-    if len(params_url) > 0:
-      params_url = "?" + params_url
-    
-    r = self.helper.get("projects/%s/stories%s" % (self.pid, params_url))
-    r_xml = minidom.parseString(r.text)
-    stories_xml = r_xml.getElementsByTagName("story")
-    for s in stories_xml:
-      story_id = int(self.helper.getXMLElementData(s, "id"))
-      self.stories.update({story_id: Story(self, story_id)})
+  def reloadStories(self, project_id, modified_since=None, params={}):
+    self.stories = None
+    self.loadStories(project_id, modified_since, params)
+  
+  def loadStories(self, project_id, modified_since=None, params={}):
+    if not hasattr(self, 'stories') or self.stories == None:
+      self.stories = {}
+      if modified_since<>None:
+        params.update({'filter': "modified_since:%s includedone:true" % modified_since})
         
-  def reloadDetailsOfAllStories(self):
-    for story in self.stories.values():
-      story.reloadStoryDetails()
-    self.setIterationOfAllStories()
-    
-  def setIterationOfAllStories(self):
+      params_url = urllib.urlencode(params)
+      if len(params_url) > 0:
+        params_url = "?" + params_url
+      
+      r = self.get(
+        "https://www.pivotaltracker.com/services/v3/projects/%s/stories%s" % 
+        (project_id, params_url)
+      )
+      r_xml = minidom.parseString(r.text)
+      
+      for story_xml in r_xml.getElementsByTagName("story"):
+        story_id = int(self.getXMLElementData(story_xml,"id"))
+        name = self.getXMLElementData(story_xml,"name")
+        description = self.getXMLElementData(story_xml,"description")
+        owned_by = self.getXMLElementData(story_xml,"owned_by")
+        labels = self.getXMLElementData(story_xml,"labels")
+        requester = self.getXMLElementData(story_xml,"requested_by")
+        self.stories[story_id] = {
+          "id": story_id, 
+          "name": name,
+          "description": description,
+          "owned_by": owned_by,
+          "requester": requester,
+          "labels": [labels]
+        }
+        
+      self.setIterationOfStories(project_id)
+      
+  def setIterationOfStories(self, project_id):
     # A bit of a hack because Pivotal Tracker does not report whether a story
     # is in the backlog, current or done.  Currently cannot spot if a story is
     # in the icebox.
     for iteration in ["current", "backlog", "done"]:
-      r = self.helper.get("projects/%s/iterations/%s" % (self.pid, iteration))
+      r = self.get(
+        "https://www.pivotaltracker.com/services/v3/projects/%s/iterations/%s" % 
+        (project_id, iteration)
+      )
       r_xml = minidom.parseString(r.text)
-      stories_xml = r_xml.getElementsByTagName("story")
-      for s in stories_xml:
-        story_id = int(self.helper.getXMLElementData(s, "id"))
-        if story_id not in self.stories.keys(): 
+      for story_xml in r_xml.getElementsByTagName("story"):
+        story_id = int(self.getXMLElementData(story_xml, "id"))
+        if story_id in self.stories.keys(): 
           # Sometimes self.stories does not have all the stories.
           # For example because we did a filtered search or because there
           # was an update in Pivotal Tracker between updating the stories
           # list and setting this parameter
-          continue
-        else:
-          self.stories[story_id].setIteration(iteration)
-      
-      
-class Story:
-  def __init__(self, parent_project, story_id):
-    self.parent_project = parent_project
-    self.story_id = story_id
-    self.details = {}
-    self.helper = parent_project.helper
+          self.stories[story_id]['iteration'] = iteration
   
-  def __str__(self):
-    s = ""
-    for (k,v) in self.details.iteritems():
-      s += "%s:\t%s\n" % (k,v)
-    if len(s) == 0:
-      s = "id:\t%s" % (self.story_id)
-    else:
-      s = s[:-1]
-    return s  
-  
-  def reloadStoryDetails(self):
-    self.details = {}
-    r = self.parent_project.helper.get("projects/%s/stories/%s" % 
-      (self.parent_project.pid, self.story_id))
-    r_xml = minidom.parseString(r.text)
-    story_xml = r_xml.getElementsByTagName("story")[0]
-    
-    name = self.helper.getXMLElementData(story_xml,"name")
-    description = self.helper.getXMLElementData(story_xml,"description")
-    owned_by = self.helper.getXMLElementData(story_xml,"owned_by")
-    labels = self.helper.getXMLElementData(story_xml,"labels")
-    requester = self.helper.getXMLElementData(story_xml,"requested_by")
-    self.details = {
-      "id": self.story_id, 
-      "name": name,
-      "description": description,
-      "owned_by": owned_by,
-      "requester": requester,
-      "labels": [labels]
-    }
-      
-  def setIteration(self, iteration):
-    self.details.update({"iteration": iteration})
-  
-class PivotalAPIHelper:
-  def __init__(self, api_credential, base_url=None):
-    self.api_credential = api_credential
-    self.headers={'X-TrackerToken' : self.api_credential}
-    if base_url == None:
-      base_url = "https://www.pivotaltracker.com/services/v3/"
-    self.base_url = base_url
-  
-  def get(self, url_suffix=""):
-    return requests.get(self.base_url + url_suffix,
+  def get(self, url):
+    return requests.get(url,
       verify = True,
       headers = self.headers) 
   
@@ -160,20 +109,17 @@ if __name__ == "__main__":
     help="Filters to only cards created or updated since <date>.  Format date as 'Nov 16 2009' or '11/16/2009' (NB American style)", 
     default=None
   )
+  
   args = parser.parse_args() 
-  api_token = args.token
   
-  helper = PivotalAPIHelper(api_token)
-  tracker = Tracker(helper)
-  tracker.reloadDetailsOfProjects()
-  pid = args.pid
-  print('Getting stories for project %s' % pid)
-  project = Project(helper, pid)
-  project.reinitialiseAllStories(modified_since=args.since)
-  project.reloadDetailsOfAllStories()
+  api_parser = PivotalAPIParser()
+  api_parser.login(args.token)
   
+  print('Getting stories for project %s' % args.pid)
+  api_parser.reloadStories(args.pid, args.since)
+    
   story_renderer = StoryRenderer()
-  stories  = [s.details for s in project.stories.values()]
+  stories  = api_parser.stories.values()
   
   print('Sending %s stories to the renderer'%len(stories))
   story_renderer.render(stories, file_name=args.output) # renderer needs a list of stories

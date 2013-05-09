@@ -21,7 +21,8 @@ class StoryRenderer():
       'type': 'story_type',
       'labels': 'labels',
       'tasks': 'tasks_list',
-      'project_name': 'project_name'
+      'project_name': 'project_name',
+      'iteration': 'iteration'
     }
     
     for k,v in simple_mapping.iteritems():

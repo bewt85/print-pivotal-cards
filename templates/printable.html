@@ -5,12 +5,10 @@
   </head>
   <body>
     <div id="pivotal-cards-pages" class="{{ options_classes }}">
-    {% set cardno = 0 %}
     {% for page in pages %}
-      {% set first_card_on_page = cardno %}
       <div class="page fronts">
       {% for story in page %}
-        <div class="{{ story.type }} card" id="front-{{ cardno }}">
+        <div class="{{ story.type }} card" id="front-{{ story.cardno }}">
 	        <div class="front side">
 		        <div class="header">
 			        <span class="labels">
@@ -31,13 +29,11 @@
 		        </div>
 	        </div>
         </div>
-        {% set cardno = cardno + 1 %}
       {% endfor %}
       </div>
       <div class="page backs">
-      {% set cardno = first_card_on_page %}
       {% for story in page %}
-        <div class="{{ story.type }} card" id="back-{{ cardno }}">
+        <div class="{{ story.type }} card" id="back-{{ story.cardno }}">
 	        <div class="back side">
 		        <div class="header">
 			        <span class="project">{{ story.project_name }}</span>
@@ -65,7 +61,6 @@
 		        </div>
 	        </div>
         </div>
-        {% set cardno = cardno + 1 %}
       {% endfor %}
       </div>
     {% endfor %}
