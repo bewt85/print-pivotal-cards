@@ -29,7 +29,6 @@ Coming up:
 - making this simpler, faster, more robust and more useful (whoever gets to it first) 
 
 Experimental:
-7. Optional Parameters:
   *  -u, --username - Your Pivotal Tracker username
   *  -p, --password - Your Pivotal Tracker password
   
