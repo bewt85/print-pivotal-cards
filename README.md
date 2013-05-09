@@ -22,8 +22,17 @@ https://www.pivotaltracker.com/profile
 
 Coming up:
 - filtering (probably via argparse) [somewhat done]
-- more data on cards
-- prettier cards
+- more data on cards [somewhat done]
+- prettier cards [somewhat done]
+- more testing
+- finish the scraping option
 - making this simpler, faster, more robust and more useful (whoever gets to it first) 
+
+Experimental:
+7. Optional Parameters:
+  *  -u, --username - Your Pivotal Tracker username
+  *  -p, --password - Your Pivotal Tracker password
+  
+If you provide these details, the script scrapes the Pivotal Tracker website and pulls out further details such as tasks, epics and the project name.  This approach has a couple of disadvantages: Pivotal Tracker might change their website; so far I've not persuaded it to scrape recent changes.  More work (and testing) is needed.
 
 Thanks to PSD for https://github.com/psd/pivotal-cards
