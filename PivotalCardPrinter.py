@@ -105,12 +105,14 @@ class Story:
     owned_by = self.helper.getXMLElementData(story_xml,"owned_by")
     labels = self.helper.getXMLElementData(story_xml,"labels")
     requester = self.helper.getXMLElementData(story_xml,"requested_by")
-    self.details = {"id": self.story_id, 
+    self.details = {
+      "id": self.story_id, 
       "name": name,
       "description": description,
       "owned_by": owned_by,
-      "labels": labels,
-      "requester": requester}
+      "requester": requester,
+      "labels": [labels]
+    }
       
   def setIteration(self, iteration):
     self.details.update({"iteration": iteration})
@@ -169,6 +171,9 @@ if __name__ == "__main__":
   project = Project(helper, pid)
   project.reinitialiseAllStories(modified_since=args.since)
   project.reloadDetailsOfAllStories()
+  
   story_renderer = StoryRenderer()
-  print('Sending %s stories to the renderer'%len(project.stories.values()))
-  story_renderer.render(project.stories.values(), file_name=args.output) # renderer needs a list of stories
+  stories  = [s.details for s in project.stories.values()]
+  
+  print('Sending %s stories to the renderer'%len(stories))
+  story_renderer.render(stories, file_name=args.output) # renderer needs a list of stories

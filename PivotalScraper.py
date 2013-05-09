@@ -6,21 +6,22 @@ import pdb
 
 from JSONSoup import JSONSoup
 from PivotalCardPrinter import Story
-from ScrapedStoryRenderer import ScrapedStoryRenderer
+from StoryRenderer import StoryRenderer
 
 TIME_ZONE_OFFSET = 1
 
 class PivotalScraper():
   def __init__(self):
     self.session = None
+    self.project_id = None
   
-  def reloadStories(self):
+  def reloadStories(self, project_id):
     self.stories = None
-    self.loadStories()
+    self.loadStories(project_id)
   
-  def loadStories(self):
+  def loadStories(self, project_id):
     if not hasattr(self, 'stories') or self.stories == None:
-      self.loadProjectSoup()
+      self.loadProjectSoup(project_id)
       stories = self.project_soup.matchKey('project').matchKey('stories')[0].get_raw()
       project_name = self.project_soup.matchKey('project').matchKey('name').get_raw()[0]
       self.loadAllEpics()
@@ -61,13 +62,14 @@ class PivotalScraper():
   def requestProjectDetails(self, project_id):
     return self.get('https://www.pivotaltracker.com/services/v5/projects/%s' % project_id)
   
-  def reloadProjectSoup(self):
+  def reloadProjectSoup(self, project_id):
     self.project_soup = None
-    self.loadProjectSoup
+    self.loadProjectSoup(project_id)
   
-  def loadProjectSoup(self):
-    if not hasattr(self, 'project_soup') or self.project_soup == None:
-      r = self.requestProjectDetails(project_id=807271)
+  def loadProjectSoup(self, project_id):
+    if self.project_id <> project_id or not hasattr(self, 'project_soup') or self.project_soup == None:
+      self.project_id = project_id
+      r = self.requestProjectDetails(project_id)
       self.project_soup = JSONSoup()
       self.project_soup.loads(r.text)
     
@@ -157,6 +159,11 @@ if __name__ == '__main__':
   parser.add_argument('username', help="Your Pivotal Tracker username")
   parser.add_argument('password', help="Your Pivotal Tracker password")
   parser.add_argument(
+    "pid", 
+    help="Your Project ID (e.g. www.pivotaltracker.com/s/projects/<pid>)", 
+    type=int
+  )
+  parser.add_argument(
     "-o", "--output", 
     help="The HTML file you want to output to", 
     default=None
@@ -165,7 +172,7 @@ if __name__ == '__main__':
   args = parser.parse_args()
   scraper = PivotalScraper()
   scraper.login(args.username, args.password)
-  scraper.reloadStories()
+  scraper.reloadStories(project_id=args.pid)
   
-  story_renderer = ScrapedStoryRenderer()
+  story_renderer = StoryRenderer()
   story_renderer.render(scraper.stories, args.output)

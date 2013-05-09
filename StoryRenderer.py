@@ -1,58 +1,80 @@
 from datetime import datetime
-from collections import defaultdict
-import itertools
-
-import PivotalCardTemplate as template
+from jinja2 import Environment, FileSystemLoader
+import os
 
 class StoryRenderer():
   def __init__(self):
-    pass
+    self.cardno = 0
   
-  def constantFactory(self, value):
-    return itertools.repeat(value).next
-  
-  def createDefaultStory(self, story):
-    """Makes templating easier.  Default stories are a bit like a dictionary but
-    return '' if a key is not found.  This makes the poor man's templating easier"""
-    default_story = defaultdict(self.constantFactory(''))
-    for (k,v) in story.details.iteritems():
-      default_story[k] = v
-    return default_story
+  def mapStoryForRender(self, story):
+    class FakeStory(object):
+      pass
+      
+    _story = FakeStory()
     
-  def render(self, stories, file_name=None, stories_per_page=4):
+    simple_mapping = {
+      'id': 'id',
+      'name': 'name',
+      'decription': 'description',
+      'owned_by': 'owned_by',
+      'requester': 'requested_by',
+      'type': 'story_type',
+      'labels': 'labels',
+      'tasks': 'tasks_list',
+      'project_name': 'project_name'
+    }
+    
+    for k,v in simple_mapping.iteritems():
+      if v in story.keys():
+        _story.__setattr__(k, story[v])
+    
+    if 'epics' in story.keys():
+      _story.__setattr__('epic_name', ", ".join(story['epics']))
+    
+    if 'cardno' not in story.keys():
+      _story.__setattr__('cardno', self.cardno)
+      self.cardno += 1
+    else:
+      _story.__setattr__('cardno', stork['cardno'])
+    
+    return _story
+    
+  def storiesToPages(self, stories, stories_per_page):
+    count = 0
+    pages = []
+    for story in stories:
+     if count % stories_per_page == 0:
+       pages.append([])
+     pages[-1].append(story)
+     count += 1
+    
+    return pages 
+  
+  def render(self, _stories, file_name=None, stories_per_page=4):
+    env = Environment(
+      loader=FileSystemLoader(
+        os.path.join(os.path.dirname(__file__),
+        'templates')))
+
     if file_name == None:
       file_name = "default_%s.html" % datetime.strftime(datetime.now(),"%Y%m%d-%H%M%S")
     
-    cardno = 0
-    
-    front_stories = []
-    back_stories = []
-    
-    for story in stories:
-      default_story = self.createDefaultStory(story) # A bit like a dictionary
-      default_story["cardno"] = cardno
-      front_stories += [template.front_card % default_story]
-      back_stories += [template.back_card % default_story]
-      cardno+=1
-    
-    """This is a horrible hack to template some HTML.  Someone competent should
-    replace this with a proper framework at their ealiest convenience"""
-    
-    body = "%(front)s%(back)s%(next_bit)s"      
-    cardno = 0
-    for (f,b) in zip(front_stories, back_stories):
-        if cardno % 4 == 0:
-          payload = {'front': '', 'back': '', 'next_bit': template.front_page+template.back_page+"%(next_bit)s"}
-          body = body % payload
-        payload = {'front': f+"%(front)s", 'back': b+"%(back)s", 'next_bit': "%(next_bit)s"}
-        body = body % payload
-        cardno+=1
-    
-    payload = {'front': '', 'back': '', 'next_bit': ''}
-    body = body % payload
-    
-    payload = {'body': body, 'options_classes': template.options_classes}
-    html = template.main % payload
+    stories = map(self.mapStoryForRender, _stories)
+    pages = self.storiesToPages(stories, stories_per_page)
+
+    options = {
+      "filing-colours": True,
+      "rubber-stamp": True,
+      "double-sided": True,
+      "white-backs": True
+    }  
+
+    options_classes = " ".join([key for key in options.keys() if options[key] == True]) 
+
+    template = env.get_template('printable.html')
+    html = template.render(pages = pages, options_classes = options_classes)            
     
     with open(file_name, 'w') as f:
       f.write(html.encode('utf-8'))    
+      
+
